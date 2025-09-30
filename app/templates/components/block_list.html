@@ -1,0 +1,40 @@
+{% if blocks %}
+<div class="block-list">
+    {% for block in blocks %}
+    <div class="block-item">
+        <div class="block-header">
+            <a href="/block/{{ block.height }}" class="block-height">Блок #{{ block.height }}</a>
+            <span class="block-time">{{ block.time }}</span>
+        </div>
+        <div class="block-details">
+            <div class="block-detail">
+                <span class="label">Хэш:</span>
+                <a href="/block/{{ block.hash }}" class="hash-link">{{ block.hash[:16] }}...{{ block.hash[-16:] }}</a>
+            </div>
+            <div class="block-detail">
+                <span class="label">Транзакций:</span>
+                <span class="value">{{ block.n_tx }}</span>
+            </div>
+            <div class="block-detail">
+                <span class="label">Размер:</span>
+                <span class="value">{{ block.size }} bytes</span>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% if has_more %}
+<div class="pagination">
+    <button hx-get="/components/latest-blocks?page={{ page + 1 }}" hx-target="#latest-blocks" hx-swap="outerHTML"
+        class="load-more-btn">
+        Загрузить ещё
+    </button>
+</div>
+{% endif %}
+
+{% else %}
+<div class="no-data">
+    <p>Блоки не найдены</p>
+</div>
+{% endif %}

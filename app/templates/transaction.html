@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}Транзакция {{ tx.txid[:16] if tx else '' }}... - Bitcoin Explorer{% endblock %}
+
+{% block content %}
+{% if tx %}
+<div class="page-header">
+    <h2>Транзакция</h2>
+</div>
+
+<div class="detail-card">
+    <h3>Общая информация</h3>
+
+    <div class="detail-grid">
+        <div class="detail-item full-width">
+            <span class="detail-label">TXID:</span>
+            <span class="detail-value hash-value">{{ tx.txid }}</span>
+        </div>
+
+        {% if tx.block_hash %}
+        <div class="detail-item">
+            <span class="detail-label">Блок:</span>
+            <span class="detail-value">
+                <a href="/block/{{ tx.block_hash }}" class="hash-link">{{ tx.block_height }}</a>
+            </span>
+        </div>
+        {% else %}
+        <div class="detail-item">
+            <span class="detail-label">Статус:</span>
+            <span class="detail-value status-unconfirmed">Не подтверждена</span>
+        </div>
+        {% endif %}
+
+        <div class="detail-item">
+            <span class="detail-label">Размер:</span>
+            <span class="detail-value">{{ tx.size }} bytes</span>
+        </div>
+
+        <div class="detail-item">
+            <span class="detail-label">Virtual Size:</span>
+            <span class="detail-value">{{ tx.vsize }} vB</span>
+        </div>
+
+        <div class="detail-item">
+            <span class="detail-label">Вес:</span>
+            <span class="detail-value">{{ tx.weight }} WU</span>
+        </div>
+
+        {% if tx.fee %}
+        <div class="detail-item">
+            <span class="detail-label">Комиссия:</span>
+            <span class="detail-value">{{ tx.fee / 100000000 }} BTC</span>
+        </div>
+        {% endif %}
+
+        <div class="detail-item">
+            <span class="detail-label">Версия:</span>
+            <span class="detail-value">{{ tx.version }}</span>
+        </div>
+
+        <div class="detail-item">
+            <span class="detail-label">Locktime:</span>
+            <span class="detail-value">{{ tx.locktime }}</span>
+        </div>
+    </div>
+</div>
+
+<div class="tx-flow">
+    <div class="tx-section">
+        <h3>Входы ({{ tx.inputs|length if tx.inputs else 0 }})</h3>
+        <div class="tx-list">
+            {% if tx.inputs %}
+            {% for input in tx.inputs %}
+            <div class="tx-item">
+                {% if input.prev_txid %}
+                <div class="tx-detail">
+                    <span class="tx-label">Предыдущая транзакция:</span>
+                    <a href="/tx/{{ input.prev_txid }}" class="hash-link">{{ input.prev_txid }}</a>
+                </div>
+                <div class="tx-detail">
+                    <span class="tx-label">Vout:</span>
+                    <span class="tx-value">{{ input.vout }}</span>
+                </div>
+                {% else %}
+                <div class="tx-detail coinbase">
+                    <span class="tx-label">Coinbase (вознаграждение за блок)</span>
+                </div>
+                {% endif %}
+                {% if input.script_sig %}
+                <div class="tx-detail">
+                    <span class="tx-label">ScriptSig:</span>
+                    <span class="tx-value script-value">{{ input.script_sig[:100] }}{% if input.script_sig|length > 100
+                        %}...{% endif %}</span>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% else %}
+            <p class="no-data">Нет данных о входах</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="tx-arrow">→</div>
+
+    <div class="tx-section">
+        <h3>Выходы ({{ tx.outputs|length if tx.outputs else 0 }})</h3>
+        <div class="tx-list">
+            {% if tx.outputs %}
+            {% for output in tx.outputs %}
+            <div class="tx-item">
+                <div class="tx-detail">
+                    <span class="tx-label">Индекс:</span>
+                    <span class="tx-value">{{ output.n }}</span>
+                </div>
+                <div class="tx-detail">
+                    <span class="tx-label">Значение:</span>
+                    <span class="tx-value amount">{{ output.value / 100000000 }} BTC</span>
+                </div>
+                {% if output.address %}
+                <div class="tx-detail">
+                    <span class="tx-label">Адрес:</span>
+                    <a href="/address/{{ output.address }}" class="hash-link">{{ output.address }}</a>
+                </div>
+                {% endif %}
+                {% if output.script_pubkey %}
+                <div class="tx-detail">
+                    <span class="tx-label">ScriptPubKey:</span>
+                    <span class="tx-value script-value">{{ output.script_pubkey[:100] }}{% if
+                        output.script_pubkey|length > 100 %}...{% endif %}</span>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% else %}
+            <p class="no-data">Нет данных о выходах</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% else %}
+<div class="error-container">
+    <h2>Транзакция не найдена</h2>
+    <p>Запрошенная транзакция не существует в базе данных.</p>
+    <a href="/" class="button">На главную</a>
+</div>
+{% endif %}
+{% endblock %}

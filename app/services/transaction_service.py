@@ -43,27 +43,24 @@ class TransactionService:
             logger.error(f"Ошибка получения транзакции по txid {txid}: {e}")
             raise TransactionServiceError(f"Не удалось получить транзакцию: {e}")
 
-    async def get_latest_transactions(self, limit: int = 10):
+    def get_latest_transactions(self, limit: int = 10, offset: int = 0):
         """
         Получение последних транзакций из БД
 
         Args:
             limit: Количество транзакций для возврата
+            offset: Смещение для пагинации
         """
         try:
             transactions = (
                 self.db.query(Transaction)
                 .filter(Transaction.block_height.isnot(None))
                 .order_by(desc(Transaction.block_height), desc(Transaction.id))
+                .offset(offset)
                 .limit(limit)
                 .all()
             )
-            total = (
-                self.db.query(Transaction)
-                .filter(Transaction.block_height.isnot(None))
-                .count()
-            )
-            return transactions, total
+            return transactions
         except Exception as e:
             logger.error(f"Ошибка получения последних транзакций: {e}")
             raise TransactionServiceError(
@@ -93,22 +90,6 @@ class TransactionService:
             raise TransactionServiceError(
                 f"Не удалось получить неподтвержденные транзакции: {e}"
             )
-
-    async def get_transaction_by_txid(self, txid: str) -> Optional[Transaction]:
-        """
-        Получение транзакции по txid из БД (async версия)
-
-        Args:
-            txid: ID транзакции
-        """
-        try:
-            transaction = (
-                self.db.query(Transaction).filter(Transaction.txid == txid).first()
-            )
-            return transaction
-        except Exception as e:
-            logger.error(f"Ошибка получения транзакции по txid {txid}: {e}")
-            raise TransactionServiceError(f"Не удалось получить транзакцию: {e}")
 
     async def get_address_info(self, address: str):
         """

@@ -2,14 +2,19 @@
 Главное FastAPI приложение Bitcoin Blockchain Explorer
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app.api import addresses, blocks, cache, search, sync, transactions
 from app.background import lifespan
 from app.config import settings
+from app.database import get_db
+from app.models.address import Address
+from app.services.block_service import BlockService
+from app.services.transaction_service import TransactionService
 
 # Создаем FastAPI приложение
 app = FastAPI(
@@ -46,10 +51,221 @@ app.include_router(sync.router, prefix=settings.API_V1_STR)
 app.include_router(cache.router, prefix=settings.API_V1_STR)
 
 
-@app.get("/")
-async def root():
+@app.get("/", response_class=HTMLResponse)
+async def root(request: Request):
     """Главная страница"""
-    return {"message": "Bitcoin Blockchain Explorer", "version": settings.VERSION}
+    return templates.TemplateResponse("index.html", {"request": request})
+
+
+@app.get("/block/{hash_or_height}", response_class=HTMLResponse)
+async def block_page(request: Request, hash_or_height: str):
+    """Страница блока"""
+    db = next(get_db())
+    block_service = BlockService(db)
+
+    # Попробуем получить блок по хэшу или высоте
+    try:
+        height = int(hash_or_height)
+        block = block_service.get_block_by_height(height)
+    except ValueError:
+        block = block_service.get_block_by_hash(hash_or_height)
+
+    return templates.TemplateResponse(
+        "block.html", {"request": request, "block": block}
+    )
+
+
+@app.get("/tx/{txid}", response_class=HTMLResponse)
+async def transaction_page(request: Request, txid: str):
+    """Страница транзакции"""
+    db = next(get_db())
+    tx_service = TransactionService(db)
+    tx = tx_service.get_transaction(txid)
+
+    return templates.TemplateResponse(
+        "transaction.html", {"request": request, "tx": tx}
+    )
+
+
+@app.get("/address/{address}", response_class=HTMLResponse)
+async def address_page(request: Request, address: str):
+    """Страница адреса"""
+    db = next(get_db())
+    addr = db.query(Address).filter(Address.address == address).first()
+
+    return templates.TemplateResponse(
+        "address.html", {"request": request, "address": addr}
+    )
+
+
+@app.get("/blocks", response_class=HTMLResponse)
+async def blocks_page(request: Request):
+    """Страница списка блоков"""
+    return templates.TemplateResponse("index.html", {"request": request})
+
+
+@app.get("/transactions", response_class=HTMLResponse)
+async def transactions_page(request: Request):
+    """Страница списка транзакций"""
+    return templates.TemplateResponse("index.html", {"request": request})
+
+
+@app.get("/search", response_class=HTMLResponse)
+async def search_page(request: Request, q: str = ""):
+    """Страница поиска"""
+    if not q:
+        return templates.TemplateResponse(
+            "components/search_results.html",
+            {"request": request, "results": None, "query": ""},
+        )
+
+    db = next(get_db())
+    block_service = BlockService(db)
+    tx_service = TransactionService(db)
+
+    results = {"blocks": [], "transactions": [], "addresses": []}
+
+    # Поиск блоков
+    try:
+        height = int(q)
+        block = block_service.get_block_by_height(height)
+        if block:
+            results["blocks"].append(block)
+    except ValueError:
+        block = block_service.get_block_by_hash(q)
+        if block:
+            results["blocks"].append(block)
+
+    # Поиск транзакций
+    tx = tx_service.get_transaction(q)
+    if tx:
+        results["transactions"].append(tx)
+
+    # Поиск адресов
+    addr = db.query(Address).filter(Address.address == q).first()
+    if addr:
+        results["addresses"].append(addr)
+
+    return templates.TemplateResponse(
+        "components/search_results.html",
+        {"request": request, "results": results, "query": q},
+    )
+
+
+@app.get("/components/latest-blocks", response_class=HTMLResponse)
+async def latest_blocks_component(request: Request, page: int = 1):
+    """HTMX компонент последних блоков"""
+    db = next(get_db())
+    block_service = BlockService(db)
+
+    limit = 10
+    offset = (page - 1) * limit
+    blocks = block_service.get_latest_blocks(limit=limit, offset=offset)
+
+    return templates.TemplateResponse(
+        "components/block_list.html",
+        {
+            "request": request,
+            "blocks": blocks,
+            "page": page,
+            "has_more": len(blocks) == limit,
+        },
+    )
+
+
+@app.get("/components/latest-transactions", response_class=HTMLResponse)
+async def latest_transactions_component(request: Request, page: int = 1):
+    """HTMX компонент последних транзакций"""
+    db = next(get_db())
+    tx_service = TransactionService(db)
+
+    limit = 10
+    offset = (page - 1) * limit
+    transactions = tx_service.get_latest_transactions(limit=limit, offset=offset)
+
+    return templates.TemplateResponse(
+        "components/tx_list.html",
+        {
+            "request": request,
+            "transactions": transactions,
+            "page": page,
+            "has_more": len(transactions) == limit,
+        },
+    )
+
+
+@app.get("/components/block-transactions", response_class=HTMLResponse)
+async def block_transactions_component(request: Request, hash: str):
+    """HTMX компонент транзакций блока"""
+    db = next(get_db())
+    tx_service = TransactionService(db)
+
+    transactions = tx_service.get_transactions_by_block(hash)
+
+    return templates.TemplateResponse(
+        "components/tx_list.html",
+        {
+            "request": request,
+            "transactions": transactions,
+            "page": 1,
+            "has_more": False,
+        },
+    )
+
+
+@app.get("/components/address-transactions", response_class=HTMLResponse)
+async def address_transactions_component(request: Request, address: str):
+    """HTMX компонент транзакций адреса"""
+    db = next(get_db())
+    tx_service = TransactionService(db)
+
+    transactions = tx_service.get_transactions_by_address(address)
+
+    return templates.TemplateResponse(
+        "components/tx_list.html",
+        {
+            "request": request,
+            "transactions": transactions,
+            "page": 1,
+            "has_more": False,
+        },
+    )
+
+
+@app.get("/api/stats", response_class=HTMLResponse)
+async def stats_endpoint(request: Request):
+    """Endpoint для статистики (используется на главной странице)"""
+    db = next(get_db())
+    block_service = BlockService(db)
+
+    # Получаем последний блок для статистики
+    latest_block = block_service.get_latest_block()
+
+    if latest_block:
+        stats_html = f"""
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h4>Последний блок</h4>
+                <p class="stat-value">#{latest_block.height}</p>
+            </div>
+            <div class="stat-card">
+                <h4>Сложность</h4>
+                <p class="stat-value">{latest_block.difficulty:.2f}</p>
+            </div>
+            <div class="stat-card">
+                <h4>Транзакций в блоке</h4>
+                <p class="stat-value">{latest_block.n_tx}</p>
+            </div>
+        </div>
+        """
+    else:
+        stats_html = """
+        <div class="stat-card">
+            <p>Статистика недоступна</p>
+        </div>
+        """
+
+    return HTMLResponse(content=stats_html)
 
 
 @app.get("/health")

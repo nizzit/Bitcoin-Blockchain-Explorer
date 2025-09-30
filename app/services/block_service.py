@@ -3,7 +3,6 @@
 """
 
 import logging
-from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import asc, desc
@@ -40,16 +39,21 @@ class BlockService:
             logger.error(f"Ошибка получения последнего блока: {e}")
             raise BlockServiceError(f"Не удалось получить последний блок: {e}")
 
-    def get_latest_blocks(self, limit: int = 10) -> List[Block]:
+    def get_latest_blocks(self, limit: int = 10, offset: int = 0) -> List[Block]:
         """
         Получение последних блоков из БД
 
         Args:
             limit: Количество блоков для возврата
+            offset: Смещение для пагинации
         """
         try:
             blocks = (
-                self.db.query(Block).order_by(desc(Block.height)).limit(limit).all()
+                self.db.query(Block)
+                .order_by(desc(Block.height))
+                .offset(offset)
+                .limit(limit)
+                .all()
             )
             return blocks
         except Exception as e:

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Адрес {{ address.address[:16] if address else '' }}... - Bitcoin Explorer{% endblock %}
+
+{% block content %}
+{% if address %}
+<div class="page-header">
+    <h2>Адрес Bitcoin</h2>
+</div>
+
+<div class="detail-card">
+    <h3>Информация об адресе</h3>
+
+    <div class="detail-grid">
+        <div class="detail-item full-width">
+            <span class="detail-label">Адрес:</span>
+            <span class="detail-value hash-value">{{ address.address }}</span>
+        </div>
+
+        <div class="detail-item">
+            <span class="detail-label">Баланс:</span>
+            <span class="detail-value amount">{{ address.balance / 100000000 }} BTC</span>
+        </div>
+
+        <div class="detail-item">
+            <span class="detail-label">Количество транзакций:</span>
+            <span class="detail-value">{{ address.tx_count }}</span>
+        </div>
+
+        {% if address.first_seen_block %}
+        <div class="detail-item">
+            <span class="detail-label">Первая активность:</span>
+            <span class="detail-value">
+                <a href="/block/{{ address.first_seen_block }}" class="hash-link">Блок #{{ address.first_seen_block
+                    }}</a>
+            </span>
+        </div>
+        {% endif %}
+
+        {% if address.last_seen_block %}
+        <div class="detail-item">
+            <span class="detail-label">Последняя активность:</span>
+            <span class="detail-value">
+                <a href="/block/{{ address.last_seen_block }}" class="hash-link">Блок #{{ address.last_seen_block }}</a>
+            </span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<section class="section">
+    <div class="section-header">
+        <h3>Транзакции</h3>
+    </div>
+
+    <div id="address-transactions" hx-get="/components/address-transactions?address={{ address.address }}"
+        hx-trigger="load" hx-swap="innerHTML">
+        <div class="loading">
+            <div class="spinner"></div>
+            <p>Загрузка транзакций...</p>
+        </div>
+    </div>
+</section>
+
+{% else %}
+<div class="error-container">
+    <h2>Адрес не найден</h2>
+    <p>Запрошенный адрес не существует в базе данных или не имел активности.</p>
+    <a href="/" class="button">На главную</a>
+</div>
+{% endif %}
+{% endblock %}

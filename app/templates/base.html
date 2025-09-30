@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Bitcoin Explorer{% endblock %}</title>
+
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+
+    {% block extra_head %}{% endblock %}
+</head>
+
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <h1 class="logo">
+                    <a href="/">₿ Bitcoin Explorer</a>
+                </h1>
+                <nav class="nav">
+                    <a href="/" class="nav-link">Главная</a>
+                    <a href="/blocks" class="nav-link">Блоки</a>
+                    <a href="/transactions" class="nav-link">Транзакции</a>
+                </nav>
+            </div>
+
+            <!-- Поиск -->
+            <div class="search-container">
+                <form class="search-form" hx-get="/search" hx-target="#search-results" hx-trigger="submit">
+                    <input type="text" name="q" class="search-input"
+                        placeholder="Поиск по блоку, транзакции или адресу..." hx-get="/search"
+                        hx-trigger="keyup changed delay:500ms" hx-target="#search-results" autocomplete="off">
+                    <button type="submit" class="search-button">🔍</button>
+                </form>
+                <div id="search-results" class="search-results"></div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 Bitcoin Explorer | Powered by FastAPI & HTMX</p>
+            <div class="footer-links">
+                <a href="/docs">API Docs</a>
+                <a href="https://github.com" target="_blank">GitHub</a>
+            </div>
+        </div>
+    </footer>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+
+</html>

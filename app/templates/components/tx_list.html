@@ -1,0 +1,42 @@
+{% if transactions %}
+<div class="tx-list">
+    {% for tx in transactions %}
+    <div class="tx-item">
+        <div class="tx-header">
+            <a href="/tx/{{ tx.txid }}" class="tx-id">{{ tx.txid[:16] }}...{{ tx.txid[-16:] }}</a>
+            {% if tx.block_height %}
+            <a href="/block/{{ tx.block_height }}" class="tx-block">Блок #{{ tx.block_height }}</a>
+            {% else %}
+            <span class="tx-status unconfirmed">Не подтверждена</span>
+            {% endif %}
+        </div>
+        <div class="tx-details">
+            <div class="tx-detail">
+                <span class="label">Размер:</span>
+                <span class="value">{{ tx.size }} bytes ({{ tx.vsize }} vB)</span>
+            </div>
+            {% if tx.fee %}
+            <div class="tx-detail">
+                <span class="label">Комиссия:</span>
+                <span class="value">{{ tx.fee / 100000000 }} BTC</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% if has_more %}
+<div class="pagination">
+    <button hx-get="/components/latest-transactions?page={{ page + 1 }}" hx-target="#latest-transactions"
+        hx-swap="outerHTML" class="load-more-btn">
+        Загрузить ещё
+    </button>
+</div>
+{% endif %}
+
+{% else %}
+<div class="no-data">
+    <p>Транзакции не найдены</p>
+</div>
+{% endif %}

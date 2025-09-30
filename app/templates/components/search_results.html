@@ -1,0 +1,50 @@
+{% if results %}
+<div class="search-results-list">
+    {% if results.blocks %}
+    <div class="search-section">
+        <h4>Блоки ({{ results.blocks|length }})</h4>
+        {% for block in results.blocks %}
+        <a href="/block/{{ block.height }}" class="search-result-item">
+            <div class="result-type">Блок</div>
+            <div class="result-main">Блок #{{ block.height }}</div>
+            <div class="result-sub">{{ block.hash }}</div>
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if results.transactions %}
+    <div class="search-section">
+        <h4>Транзакции ({{ results.transactions|length }})</h4>
+        {% for tx in results.transactions %}
+        <a href="/tx/{{ tx.txid }}" class="search-result-item">
+            <div class="result-type">Транзакция</div>
+            <div class="result-main">{{ tx.txid[:32] }}...</div>
+            {% if tx.block_height %}
+            <div class="result-sub">Блок #{{ tx.block_height }}</div>
+            {% else %}
+            <div class="result-sub">Не подтверждена</div>
+            {% endif %}
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if results.addresses %}
+    <div class="search-section">
+        <h4>Адреса ({{ results.addresses|length }})</h4>
+        {% for address in results.addresses %}
+        <a href="/address/{{ address.address }}" class="search-result-item">
+            <div class="result-type">Адрес</div>
+            <div class="result-main">{{ address.address }}</div>
+            <div class="result-sub">Баланс: {{ address.balance / 100000000 }} BTC</div>
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% elif query %}
+<div class="no-results">
+    <p>По запросу "{{ query }}" ничего не найдено</p>
+</div>
+{% endif %}

@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}Блок {{ block.height if block else '' }} - Bitcoin Explorer{% endblock %}
+
+{% block content %}
+{% if block %}
+<div class="page-header">
+    <h2>Блок #{{ block.height }}</h2>
+    <div class="block-navigation">
+        {% if block.height > 0 %}
+        <a href="/block/{{ block.height - 1 }}" class="nav-button">← Предыдущий</a>
+        {% endif %}
+        {% if block.next_block_hash %}
+        <a href="/block/{{ block.height + 1 }}" class="nav-button">Следующий →</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="detail-card">
+    <h3>Информация о блоке</h3>
+
+    <div class="detail-grid">
+        <div class="detail-item">
+            <span class="detail-label">Высота:</span>
+            <span class="detail-value">{{ block.height }}</span>
+        </div>
+
+        <div class="detail-item">
+            <span class="detail-label">Хэш:</span>
+            <span class="detail-value hash-value">{{ block.hash }}</span>
+        </div>
+
+        <div class="detail-item">
+            <span class="detail-label">Время:</span>
+            <span class="detail-value">{{ block.time }}</span>
+        </div>
+
+        <div class="detail-item">
+            <span class="detail-label">Количество транзакций:</span>
+            <span class="detail-value">{{ block.n_tx }}</span>
+        </div>
+
+        <div class="detail-item">
+            <span class="detail-label">Размер:</span>
+            <span class="detail-value">{{ block.size }} bytes</span>
+        </div>
+
+        <div class="detail-item">
+            <span class="detail-label">Вес:</span>
+            <span class="detail-value">{{ block.weight }} WU</span>
+        </div>
+
+        <div class="detail-item">
+            <span class="detail-label">Сложность:</span>
+            <span class="detail-value">{{ "%.2f"|format(block.difficulty) if block.difficulty else 'N/A' }}</span>
+        </div>
+
+        <div class="detail-item">
+            <span class="detail-label">Nonce:</span>
+            <span class="detail-value">{{ block.nonce }}</span>
+        </div>
+
+        <div class="detail-item">
+            <span class="detail-label">Версия:</span>
+            <span class="detail-value">{{ block.version }}</span>
+        </div>
+
+        <div class="detail-item">
+            <span class="detail-label">Merkle Root:</span>
+            <span class="detail-value hash-value">{{ block.merkleroot }}</span>
+        </div>
+
+        {% if block.previous_block_hash %}
+        <div class="detail-item">
+            <span class="detail-label">Предыдущий блок:</span>
+            <span class="detail-value">
+                <a href="/block/{{ block.previous_block_hash }}" class="hash-link">{{ block.previous_block_hash }}</a>
+            </span>
+        </div>
+        {% endif %}
+
+        {% if block.next_block_hash %}
+        <div class="detail-item">
+            <span class="detail-label">Следующий блок:</span>
+            <span class="detail-value">
+                <a href="/block/{{ block.next_block_hash }}" class="hash-link">{{ block.next_block_hash }}</a>
+            </span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<section class="section">
+    <div class="section-header">
+        <h3>Транзакции ({{ block.n_tx }})</h3>
+    </div>
+
+    <div id="block-transactions" hx-get="/components/block-transactions?hash={{ block.hash }}" hx-trigger="load"
+        hx-swap="innerHTML">
+        <div class="loading">
+            <div class="spinner"></div>
+            <p>Загрузка транзакций...</p>
+        </div>
+    </div>
+</section>
+
+{% else %}
+<div class="error-container">
+    <h2>Блок не найден</h2>
+    <p>Запрошенный блок не существует в базе данных.</p>
+    <a href="/" class="button">На главную</a>
+</div>
+{% endif %}
+{% endblock %}
