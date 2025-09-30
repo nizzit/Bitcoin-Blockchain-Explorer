@@ -135,7 +135,7 @@ class SyncService:
                     block_data = self.block_service.fetch_block_from_rpc(height)
 
                     # Сохраняем блок
-                    self.block_service.save_block_to_db(block_data)
+                    await self.block_service.save_block_to_db(block_data)
                     synced_blocks += 1
 
                     # Сохраняем транзакции блока
@@ -342,7 +342,7 @@ class SyncService:
         finally:
             self._is_syncing = False
 
-    def handle_reorg(self, new_tip_hash: str) -> Dict[str, Any]:
+    async def handle_reorg(self, new_tip_hash: str) -> Dict[str, Any]:
         """
         Обработка реорганизации блокчейна
 
@@ -365,7 +365,7 @@ class SyncService:
             common_height = new_height
             while common_height > 0:
                 block_hash = bitcoin_rpc.get_block_hash(common_height)
-                db_block = self.block_service.get_block_by_height(common_height)
+                db_block = await self.block_service.get_block_by_height(common_height)
 
                 if db_block and db_block.hash == block_hash:
                     # Нашли общий предок

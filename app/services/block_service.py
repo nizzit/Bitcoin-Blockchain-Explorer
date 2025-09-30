@@ -86,7 +86,7 @@ class BlockService:
             logger.error(f"Ошибка подсчета блоков: {e}")
             return 0
 
-    def get_block_by_hash(self, block_hash: str) -> Optional[Block]:
+    async def get_block_by_hash(self, block_hash: str) -> Optional[Block]:
         """
         Получение блока по хешу из БД
 
@@ -100,7 +100,7 @@ class BlockService:
             logger.error(f"Ошибка получения блока по хешу {block_hash}: {e}")
             raise BlockServiceError(f"Не удалось получить блок: {e}")
 
-    def get_block_by_height(self, height: int) -> Optional[Block]:
+    async def get_block_by_height(self, height: int) -> Optional[Block]:
         """
         Получение блока по высоте из БД
 
@@ -191,7 +191,7 @@ class BlockService:
             )
             raise BlockServiceError(f"Неожиданная ошибка: {e}")
 
-    def save_block_to_db(self, block_data: Dict[str, Any]) -> Block:
+    async def save_block_to_db(self, block_data: Dict[str, Any]) -> Block:
         """
         Сохранение блока в БД
 
@@ -200,7 +200,7 @@ class BlockService:
         """
         try:
             # Проверяем, существует ли блок
-            existing_block = self.get_block_by_hash(block_data["hash"])
+            existing_block = await self.get_block_by_hash(block_data["hash"])
             if existing_block:
                 logger.info(f"Блок {block_data['hash']} уже существует в БД")
                 return existing_block
@@ -235,7 +235,7 @@ class BlockService:
             logger.error(f"Ошибка сохранения блока в БД: {e}")
             raise BlockServiceError(f"Не удалось сохранить блок: {e}")
 
-    def get_or_fetch_block(self, hash_or_height: str | int) -> Block:
+    async def get_or_fetch_block(self, hash_or_height: str | int) -> Block:
         """
         Получение блока из БД или через RPC
 
@@ -245,9 +245,9 @@ class BlockService:
         try:
             # Сначала пытаемся найти в БД
             if isinstance(hash_or_height, int) or hash_or_height.isdigit():
-                block = self.get_block_by_height(int(hash_or_height))
+                block = await self.get_block_by_height(int(hash_or_height))
             else:
-                block = self.get_block_by_hash(hash_or_height)
+                block = await self.get_block_by_hash(hash_or_height)
 
             if block:
                 return block
@@ -255,7 +255,7 @@ class BlockService:
             # Если не найден в БД, получаем через RPC и сохраняем
             logger.info(f"Блок {hash_or_height} не найден в БД, получаем через RPC")
             block_data = self.fetch_block_from_rpc(hash_or_height)
-            return self.save_block_to_db(block_data)
+            return await self.save_block_to_db(block_data)
 
         except Exception as e:
             logger.error(f"Ошибка получения блока {hash_or_height}: {e}")
@@ -365,7 +365,7 @@ class BlockService:
             logger.error(f"Ошибка получения информации о блокчейне: {e}")
             raise BlockServiceError(f"Не удалось получить информацию о блокчейне: {e}")
 
-    def search_blocks(self, query: str) -> List[Block]:
+    async def search_blocks(self, query: str) -> List[Block]:
         """
         Поиск блоков по хешу или высоте
 
@@ -378,7 +378,7 @@ class BlockService:
             # Поиск по высоте
             if query.isdigit():
                 height = int(query)
-                block = self.get_block_by_height(height)
+                block = await self.get_block_by_height(height)
                 if block:
                     blocks.append(block)
 

@@ -43,7 +43,7 @@ class TransactionService:
             logger.error(f"Ошибка получения транзакции по txid {txid}: {e}")
             raise TransactionServiceError(f"Не удалось получить транзакцию: {e}")
 
-    def get_latest_transactions(self, limit: int = 10, offset: int = 0):
+    async def get_latest_transactions(self, limit: int = 10, offset: int = 0):
         """
         Получение последних транзакций из БД
 
@@ -52,15 +52,14 @@ class TransactionService:
             offset: Смещение для пагинации
         """
         try:
-            transactions = (
+            query = (
                 self.db.query(Transaction)
                 .filter(Transaction.block_height.isnot(None))
                 .order_by(desc(Transaction.block_height), desc(Transaction.id))
-                .offset(offset)
-                .limit(limit)
-                .all()
             )
-            return transactions
+            total = query.count()
+            transactions = query.offset(offset).limit(limit).all()
+            return transactions, total
         except Exception as e:
             logger.error(f"Ошибка получения последних транзакций: {e}")
             raise TransactionServiceError(

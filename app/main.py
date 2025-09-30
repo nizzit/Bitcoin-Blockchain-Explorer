@@ -66,9 +66,9 @@ async def block_page(request: Request, hash_or_height: str):
     # Попробуем получить блок по хэшу или высоте
     try:
         height = int(hash_or_height)
-        block = block_service.get_block_by_height(height)
+        block = await block_service.get_block_by_height(height)
     except ValueError:
-        block = block_service.get_block_by_hash(hash_or_height)
+        block = await block_service.get_block_by_hash(hash_or_height)
 
     return templates.TemplateResponse(
         "block.html", {"request": request, "block": block}
@@ -80,7 +80,7 @@ async def transaction_page(request: Request, txid: str):
     """Страница транзакции"""
     db = next(get_db())
     tx_service = TransactionService(db)
-    tx = tx_service.get_transaction(txid)
+    tx = tx_service.get_or_fetch_transaction(txid)
 
     return templates.TemplateResponse(
         "transaction.html", {"request": request, "tx": tx}
@@ -128,16 +128,16 @@ async def search_page(request: Request, q: str = ""):
     # Поиск блоков
     try:
         height = int(q)
-        block = block_service.get_block_by_height(height)
+        block = await block_service.get_block_by_height(height)
         if block:
             results["blocks"].append(block)
     except ValueError:
-        block = block_service.get_block_by_hash(q)
+        block = await block_service.get_block_by_hash(q)
         if block:
             results["blocks"].append(block)
 
     # Поиск транзакций
-    tx = tx_service.get_transaction(q)
+    tx = tx_service.get_transaction_by_txid(q)
     if tx:
         results["transactions"].append(tx)
 
@@ -181,7 +181,9 @@ async def latest_transactions_component(request: Request, page: int = 1):
 
     limit = 10
     offset = (page - 1) * limit
-    transactions = tx_service.get_latest_transactions(limit=limit, offset=offset)
+    transactions, total = await tx_service.get_latest_transactions(
+        limit=limit, offset=offset
+    )
 
     return templates.TemplateResponse(
         "components/tx_list.html",
@@ -198,9 +200,16 @@ async def latest_transactions_component(request: Request, page: int = 1):
 async def block_transactions_component(request: Request, hash: str):
     """HTMX компонент транзакций блока"""
     db = next(get_db())
-    tx_service = TransactionService(db)
 
-    transactions = tx_service.get_transactions_by_block(hash)
+    # Получаем транзакции блока напрямую из БД
+    from app.models.transaction import Transaction
+
+    transactions = (
+        db.query(Transaction)
+        .filter(Transaction.block_hash == hash)
+        .order_by(Transaction.id)
+        .all()
+    )
 
     return templates.TemplateResponse(
         "components/tx_list.html",
@@ -219,7 +228,9 @@ async def address_transactions_component(request: Request, address: str):
     db = next(get_db())
     tx_service = TransactionService(db)
 
-    transactions = tx_service.get_transactions_by_address(address)
+    # get_transactions_by_address возвращает словарь с ключом 'transactions'
+    result = tx_service.get_transactions_by_address(address, page=1, per_page=50)
+    transactions = result["transactions"]
 
     return templates.TemplateResponse(
         "components/tx_list.html",
@@ -227,45 +238,31 @@ async def address_transactions_component(request: Request, address: str):
             "request": request,
             "transactions": transactions,
             "page": 1,
-            "has_more": False,
+            "has_more": result.get("has_next", False),
         },
     )
 
 
-@app.get("/api/stats", response_class=HTMLResponse)
+@app.get("/stats", response_class=HTMLResponse)
 async def stats_endpoint(request: Request):
     """Endpoint для статистики (используется на главной странице)"""
     db = next(get_db())
     block_service = BlockService(db)
 
     # Получаем последний блок для статистики
-    latest_block = block_service.get_latest_block()
+    latest_block = await block_service.get_latest_block()
 
     if latest_block:
-        stats_html = f"""
-        <div class="stats-grid">
-            <div class="stat-card">
-                <h4>Последний блок</h4>
-                <p class="stat-value">#{latest_block.height}</p>
-            </div>
-            <div class="stat-card">
-                <h4>Сложность</h4>
-                <p class="stat-value">{latest_block.difficulty:.2f}</p>
-            </div>
-            <div class="stat-card">
-                <h4>Транзакций в блоке</h4>
-                <p class="stat-value">{latest_block.n_tx}</p>
-            </div>
-        </div>
-        """
+        return templates.TemplateResponse(
+            "stats.html", {"request": request, "latest_block": latest_block}
+        )
     else:
         stats_html = """
         <div class="stat-card">
             <p>Статистика недоступна</p>
         </div>
         """
-
-    return HTMLResponse(content=stats_html)
+        return HTMLResponse(content=stats_html)
 
 
 @app.get("/health")
