@@ -3,9 +3,12 @@ Pydantic схемы для Bitcoin адресов
 """
 
 from datetime import datetime
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from pydantic import BaseModel, Field
+
+if TYPE_CHECKING:
+    from app.schemas.transaction import Transaction
 
 
 class AddressBase(BaseModel):
@@ -63,6 +66,20 @@ class AddressStats(BaseModel):
     last_seen_block: Optional[int] = None
     total_received: Optional[int] = Field(None, description="Всего получено сатоши")
     total_sent: Optional[int] = Field(None, description="Всего отправлено сатоши")
+
+    class Config:
+        from_attributes = True
+
+
+class AddressTransactionList(BaseModel):
+    """Список транзакций адреса с пагинацией"""
+
+    address: str
+    transactions: List["Transaction"]
+    total: int
+    page: int
+    limit: int
+    pages: int
 
     class Config:
         from_attributes = True

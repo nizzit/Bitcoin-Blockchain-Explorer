@@ -175,8 +175,16 @@ class BitcoinRPCIntegrationTest(unittest.TestCase):
 
         tx_service = get_transaction_service(self.db)
 
-        # Получение последних транзакций
-        latest_txs = tx_service.get_latest_transactions(limit=3)
+        # Получение последних транзакций (асинхронный метод)
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        latest_txs_result = loop.run_until_complete(
+            tx_service.get_latest_transactions(limit=3)
+        )
+        loop.close()
+
+        # Метод возвращает кортеж (transactions, total)
+        latest_txs, total = latest_txs_result
         self.assertIsNotNone(latest_txs)
         self.assertIsInstance(latest_txs, list)
 

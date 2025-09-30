@@ -105,6 +105,19 @@ class TransactionSummary(BaseModel):
         from_attributes = True
 
 
+class TransactionList(BaseModel):
+    """Список транзакций с пагинацией"""
+
+    transactions: List[Transaction]
+    total: int
+    page: int
+    limit: int
+    pages: int
+
+    class Config:
+        from_attributes = True
+
+
 class TransactionListResponse(BaseModel):
     """Ответ со списком транзакций"""
 

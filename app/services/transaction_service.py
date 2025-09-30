@@ -43,7 +43,7 @@ class TransactionService:
             logger.error(f"Ошибка получения транзакции по txid {txid}: {e}")
             raise TransactionServiceError(f"Не удалось получить транзакцию: {e}")
 
-    def get_latest_transactions(self, limit: int = 10) -> List[Transaction]:
+    async def get_latest_transactions(self, limit: int = 10):
         """
         Получение последних транзакций из БД
 
@@ -58,34 +58,150 @@ class TransactionService:
                 .limit(limit)
                 .all()
             )
-            return transactions
+            total = (
+                self.db.query(Transaction)
+                .filter(Transaction.block_height.isnot(None))
+                .count()
+            )
+            return transactions, total
         except Exception as e:
             logger.error(f"Ошибка получения последних транзакций: {e}")
             raise TransactionServiceError(
                 f"Не удалось получить последние транзакции: {e}"
             )
 
-    def get_unconfirmed_transactions(self, limit: int = 50) -> List[Transaction]:
+    async def get_unconfirmed_transactions(self, page: int = 1, limit: int = 50):
         """
         Получение неподтвержденных транзакций (в мемпуле)
 
         Args:
+            page: Номер страницы
             limit: Количество транзакций для возврата
         """
         try:
-            transactions = (
+            query = (
                 self.db.query(Transaction)
                 .filter(Transaction.block_hash.is_(None))
                 .order_by(desc(Transaction.id))
-                .limit(limit)
-                .all()
             )
-            return transactions
+            total = query.count()
+            offset = (page - 1) * limit
+            transactions = query.offset(offset).limit(limit).all()
+            return transactions, total
         except Exception as e:
             logger.error(f"Ошибка получения неподтвержденных транзакций: {e}")
             raise TransactionServiceError(
                 f"Не удалось получить неподтвержденные транзакции: {e}"
             )
+
+    async def get_transaction_by_txid(self, txid: str) -> Optional[Transaction]:
+        """
+        Получение транзакции по txid из БД (async версия)
+
+        Args:
+            txid: ID транзакции
+        """
+        try:
+            transaction = (
+                self.db.query(Transaction).filter(Transaction.txid == txid).first()
+            )
+            return transaction
+        except Exception as e:
+            logger.error(f"Ошибка получения транзакции по txid {txid}: {e}")
+            raise TransactionServiceError(f"Не удалось получить транзакцию: {e}")
+
+    async def get_address_info(self, address: str):
+        """
+        Получение информации об адресе
+
+        Args:
+            address: Bitcoin адрес
+        """
+        try:
+            balance_info = self.get_address_balance(address)
+            return balance_info
+        except Exception as e:
+            logger.error(f"Ошибка получения информации об адресе {address}: {e}")
+            return None
+
+    async def get_address_transactions(
+        self, address: str, page: int = 1, limit: int = 25
+    ):
+        """
+        Получение транзакций адреса с пагинацией
+
+        Args:
+            address: Bitcoin адрес
+            page: Номер страницы
+            limit: Количество транзакций
+        """
+        try:
+            query = (
+                self.db.query(Transaction)
+                .join(TransactionOutput)
+                .filter(TransactionOutput.address == address)
+                .order_by(desc(Transaction.block_height), desc(Transaction.id))
+                .distinct()
+            )
+            total = query.count()
+            offset = (page - 1) * limit
+            transactions = query.offset(offset).limit(limit).all()
+            return transactions, total
+        except Exception as e:
+            logger.error(f"Ошибка получения транзакций для адреса {address}: {e}")
+            raise TransactionServiceError(
+                f"Не удалось получить транзакции для адреса: {e}"
+            )
+
+    async def get_address_utxos(self, address: str):
+        """
+        Получение неизрасходованных выходов (UTXO) адреса
+
+        Args:
+            address: Bitcoin адрес
+        """
+        try:
+            # Получаем все выходы для адреса
+            outputs = (
+                self.db.query(TransactionOutput)
+                .filter(TransactionOutput.address == address)
+                .all()
+            )
+
+            # Проверяем какие выходы еще не потрачены
+            utxos = []
+            for output in outputs:
+                spent_input = (
+                    self.db.query(TransactionInput)
+                    .filter(
+                        TransactionInput.prev_txid == output.transaction.txid,
+                        TransactionInput.vout == output.n,
+                    )
+                    .first()
+                )
+                if not spent_input:
+                    utxos.append(
+                        {
+                            "txid": output.transaction.txid,
+                            "vout": output.n,
+                            "value": output.value,
+                            "address": output.address,
+                            "script_pubkey": output.script_pubkey,
+                        }
+                    )
+
+            return utxos
+        except Exception as e:
+            logger.error(f"Ошибка получения UTXO для адреса {address}: {e}")
+            raise TransactionServiceError(f"Не удалось получить UTXO: {e}")
+
+    async def get_total_transactions(self) -> int:
+        """Получение общего количества транзакций в БД"""
+        try:
+            return self.db.query(Transaction).count()
+        except Exception as e:
+            logger.error(f"Ошибка получения количества транзакций: {e}")
+            return 0
 
     def get_transactions_paginated(
         self, page: int = 1, per_page: int = 50, confirmed_only: bool = True

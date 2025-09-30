@@ -29,6 +29,17 @@ class BlockService:
     def __init__(self, db: Session):
         self.db = db
 
+    async def get_latest_block(self) -> Optional[Block]:
+        """
+        Получение последнего блока из БД
+        """
+        try:
+            block = self.db.query(Block).order_by(desc(Block.height)).first()
+            return block
+        except Exception as e:
+            logger.error(f"Ошибка получения последнего блока: {e}")
+            raise BlockServiceError(f"Не удалось получить последний блок: {e}")
+
     def get_latest_blocks(self, limit: int = 10) -> List[Block]:
         """
         Получение последних блоков из БД
@@ -44,6 +55,32 @@ class BlockService:
         except Exception as e:
             logger.error(f"Ошибка получения последних блоков: {e}")
             raise BlockServiceError(f"Не удалось получить последние блоки: {e}")
+
+    async def get_blocks(self, page: int = 1, limit: int = 10):
+        """
+        Получение блоков с пагинацией (упрощенная версия)
+
+        Args:
+            page: Номер страницы
+            limit: Количество блоков
+        """
+        try:
+            query = self.db.query(Block).order_by(desc(Block.height))
+            total = query.count()
+            offset = (page - 1) * limit
+            blocks = query.offset(offset).limit(limit).all()
+            return blocks, total
+        except Exception as e:
+            logger.error(f"Ошибка получения блоков: {e}")
+            raise BlockServiceError(f"Не удалось получить блоки: {e}")
+
+    async def get_total_blocks(self) -> int:
+        """Получение общего количества блоков в БД"""
+        try:
+            return self.db.query(Block).count()
+        except Exception as e:
+            logger.error(f"Ошибка подсчета блоков: {e}")
+            return 0
 
     def get_block_by_hash(self, block_hash: str) -> Optional[Block]:
         """
@@ -170,11 +207,7 @@ class BlockService:
                 height=block_data["height"],
                 version=block_data.get("version"),
                 merkleroot=block_data.get("merkleroot"),
-                time=(
-                    datetime.fromtimestamp(block_data["time"])
-                    if "time" in block_data
-                    else None
-                ),
+                time=block_data.get("time"),  # Сохраняем как Unix timestamp (int)
                 nonce=block_data.get("nonce"),
                 bits=block_data.get("bits"),
                 difficulty=block_data.get("difficulty"),
@@ -224,11 +257,36 @@ class BlockService:
             logger.error(f"Ошибка получения блока {hash_or_height}: {e}")
             raise BlockServiceError(f"Не удалось получить блок: {e}")
 
-    def get_block_transactions(
+    async def get_block_transactions(
+        self, block_hash: str, page: int = 1, limit: int = 25
+    ):
+        """
+        Получение транзакций блока с пагинацией
+
+        Args:
+            block_hash: Хеш блока
+            page: Номер страницы
+            limit: Количество транзакций на странице
+        """
+        try:
+            query = (
+                self.db.query(Transaction)
+                .filter(Transaction.block_hash == block_hash)
+                .order_by(Transaction.id)
+            )
+            total = query.count()
+            offset = (page - 1) * limit
+            transactions = query.offset(offset).limit(limit).all()
+            return transactions, total
+        except Exception as e:
+            logger.error(f"Ошибка получения транзакций блока {block_hash}: {e}")
+            raise BlockServiceError(f"Не удалось получить транзакции блока: {e}")
+
+    def get_block_transactions_paginated(
         self, block_hash: str, page: int = 1, per_page: int = 50
     ) -> Dict[str, Any]:
         """
-        Получение транзакций блока с пагинацией
+        Получение транзакций блока с пагинацией (старая версия)
 
         Args:
             block_hash: Хеш блока

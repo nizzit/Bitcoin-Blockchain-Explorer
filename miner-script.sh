@@ -46,6 +46,7 @@ bitcoin-cli -conf=/home/bitcoin/.bitcoin/bitcoin.conf -rpcconnect=bitcoin-regtes
 # Непрерывный майнинг по 1 блоку каждые 10 секунд
 echo "Начинаем непрерывный майнинг..."
 while true; do
-    bitcoin-cli -conf=/home/bitcoin/.bitcoin/bitcoin.conf -rpcconnect=bitcoin-regtest generatetoaddress 1 $MINING_ADDRESS 
+    bitcoin-cli -conf=/home/bitcoin/.bitcoin/bitcoin.conf -rpcconnect=bitcoin-regtest generatetoaddress 1 $MINING_ADDRESS
+    bitcoin-cli -conf=/home/bitcoin/.bitcoin/bitcoin.conf -rpcconnect=bitcoin-regtest sendtoaddress $MINING_ADDRESS 1
     sleep 10
 done

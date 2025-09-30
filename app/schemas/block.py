@@ -3,9 +3,12 @@ Pydantic схемы для блоков Bitcoin
 """
 
 from datetime import datetime
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from pydantic import BaseModel, Field
+
+if TYPE_CHECKING:
+    from app.schemas.transaction import TransactionSummary
 
 
 class BlockBase(BaseModel):
@@ -67,9 +70,20 @@ class BlockSummary(BaseModel):
 class BlockWithTransactions(Block):
     """Блок с транзакциями"""
 
-    from app.schemas.transaction import TransactionSummary
+    transactions: List["TransactionSummary"] = []
 
-    transactions: List[TransactionSummary] = []
+    class Config:
+        from_attributes = True
+
+
+class BlockList(BaseModel):
+    """Список блоков с пагинацией"""
+
+    blocks: List[Block]
+    total: int
+    page: int
+    limit: int
+    pages: int
 
     class Config:
         from_attributes = True

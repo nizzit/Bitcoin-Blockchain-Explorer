@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from app.api import addresses, blocks, search, transactions
 from app.config import settings
 
 # Создаем FastAPI приложение
@@ -16,6 +17,7 @@ app = FastAPI(
     description="Минималистичный blockchain explorer для Bitcoin",
     docs_url="/docs",
     redoc_url="/redoc",
+    debug=True,
 )
 
 # Настройка CORS
@@ -32,6 +34,12 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # Настройка шаблонов Jinja2
 templates = Jinja2Templates(directory="app/templates")
+
+# Подключение API роутеров
+app.include_router(blocks.router, prefix=settings.API_V1_STR)
+app.include_router(transactions.router, prefix=settings.API_V1_STR)
+app.include_router(addresses.router, prefix=settings.API_V1_STR)
+app.include_router(search.router, prefix=settings.API_V1_STR)
 
 
 @app.get("/")
