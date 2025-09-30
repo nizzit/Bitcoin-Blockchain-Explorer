@@ -168,6 +168,15 @@ class BlockService:
             # Если передан int или строка с числом, получаем хеш по высоте
             if isinstance(hash_or_height, int) or hash_or_height.isdigit():
                 height = int(hash_or_height)
+
+                # Проверяем, что высота не превышает текущую высоту сети
+                network_height = bitcoin_rpc.get_block_count()
+                if height > network_height:
+                    raise BlockServiceError(
+                        f"Запрошенная высота {height} превышает текущую "
+                        f"высоту сети {network_height}"
+                    )
+
                 block_hash = bitcoin_rpc.get_block_hash(height)
             else:
                 block_hash = hash_or_height

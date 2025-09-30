@@ -147,6 +147,9 @@ class SyncService:
                                     full_tx_data = bitcoin_rpc.get_raw_transaction(
                                         tx_data, verbose=True
                                     )
+                                    # Добавляем информацию о блоке
+                                    full_tx_data["blockhash"] = block_data["hash"]
+                                    full_tx_data["blockheight"] = block_data["height"]
                                     self.transaction_service.save_transaction_to_db(
                                         full_tx_data
                                     )
@@ -160,6 +163,11 @@ class SyncService:
                             else:
                                 # Уже полные данные транзакции
                                 try:
+                                    # Добавляем информацию о блоке, если её нет
+                                    if "blockhash" not in tx_data:
+                                        tx_data["blockhash"] = block_data["hash"]
+                                    if "blockheight" not in tx_data:
+                                        tx_data["blockheight"] = block_data["height"]
                                     self.transaction_service.save_transaction_to_db(
                                         tx_data
                                     )
@@ -215,41 +223,48 @@ class SyncService:
             # Получаем транзакции из мемпула
             mempool_transactions = self.transaction_service.get_mempool_transactions()
             synced_count = 0
+            skipped_count = 0
             errors = 0
 
             for tx_data in mempool_transactions:
                 try:
-                    # Проверяем, есть ли уже эта транзакция в БД
-                    existing_tx = self.transaction_service.get_transaction_by_txid(
-                        tx_data["txid"]
-                    )
-                    if existing_tx:
+                    txid = tx_data.get("txid")
+                    if not txid:
+                        logger.warning("Пропуск транзакции без txid")
+                        errors += 1
                         continue
 
-                    # Сохраняем транзакцию без привязки к блоку
-                    tx_data_copy = tx_data.copy()
-                    tx_data_copy.pop("blockhash", None)
-                    tx_data_copy.pop("blockheight", None)
+                    result = self.transaction_service.save_transaction_to_db(tx_data)
 
-                    self.transaction_service.save_transaction_to_db(tx_data_copy)
-                    synced_count += 1
+                    # Проверяем, была ли транзакция только что создана или уже существовала
+                    if result:
+                        synced_count += 1
+                    else:
+                        skipped_count += 1
 
                 except Exception as tx_error:
-                    logger.warning(
-                        f"Ошибка синхронизации транзакции из мемпула "
-                        f"{tx_data.get('txid')}: {tx_error}"
-                    )
+                    # Логируем только уникальные ошибки, не дубликаты
+                    error_msg = str(tx_error)
+                    if (
+                        "already exists" not in error_msg.lower()
+                        and "race condition" not in error_msg.lower()
+                    ):
+                        logger.warning(
+                            f"Ошибка синхронизации транзакции из мемпула "
+                            f"{tx_data.get('txid')}: {tx_error}"
+                        )
                     errors += 1
 
             logger.info(
-                f"Синхронизация мемпула завершена: транзакций={synced_count}, "
-                f"ошибок={errors}"
+                f"Синхронизация мемпула завершена: новых транзакций={synced_count}, "
+                f"пропущено={skipped_count}, ошибок={errors}"
             )
 
             return {
                 "synced_transactions": synced_count,
+                "skipped_transactions": skipped_count,
                 "errors": errors,
-                "message": f"Синхронизировано транзакций из мемпула: {synced_count}",
+                "message": f"Синхронизировано новых транзакций из мемпула: {synced_count}",
             }
 
         except Exception as e:
@@ -413,6 +428,9 @@ class SyncService:
             True если обнаружена реорганизация
         """
         try:
+            # Получаем текущую высоту сети
+            network_height = bitcoin_rpc.get_block_count()
+
             # Получаем последние несколько блоков из БД
             recent_blocks = (
                 self.db.query(Block).order_by(Block.height.desc()).limit(10).all()
@@ -423,6 +441,14 @@ class SyncService:
 
             # Проверяем каждый блок
             for block in recent_blocks:
+                # Пропускаем блоки с высотой больше текущей высоты сети
+                if block.height > network_height:
+                    logger.warning(
+                        f"Блок {block.height} в БД превышает высоту сети "
+                        f"{network_height}, возможна реорганизация"
+                    )
+                    return True
+
                 try:
                     # Получаем хеш блока на этой высоте из сети
                     network_hash = bitcoin_rpc.get_block_hash(block.height)
@@ -434,8 +460,9 @@ class SyncService:
                         )
                         return True
 
-                except BitcoinRPCError:
-                    # Блок может быть временно недоступен
+                except BitcoinRPCError as e:
+                    # Блок может быть временно недоступен или out of range
+                    logger.debug(f"Не удалось получить блок {block.height}: {e}")
                     continue
 
             return False

@@ -6,6 +6,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import desc
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -261,11 +262,28 @@ class TransactionService:
                 logger.info(f"Транзакция {tx_data['txid']} уже существует в БД")
                 return existing_tx
 
+            # Получаем block_hash и block_height
+            block_hash = tx_data.get("blockhash")
+            block_height = tx_data.get("blockheight")
+
+            # Если есть blockhash, но нет blockheight - получаем его через RPC
+            if block_hash and not block_height:
+                try:
+                    block_header = bitcoin_rpc.get_block_header(block_hash)
+                    block_height = block_header["height"]
+                    logger.debug(
+                        f"Получена высота блока {block_height} для транзакции {tx_data['txid']}"
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"Не удалось получить высоту блока для {block_hash}: {e}"
+                    )
+
             # Создаем новую транзакцию
             transaction = Transaction(
                 txid=tx_data["txid"],
-                block_hash=tx_data.get("blockhash"),
-                block_height=tx_data.get("blockheight"),
+                block_hash=block_hash,
+                block_height=block_height,
                 version=tx_data.get("version"),
                 locktime=tx_data.get("locktime"),
                 size=tx_data.get("size"),
@@ -318,6 +336,19 @@ class TransactionService:
             logger.info(f"Транзакция {transaction.txid} успешно сохранена в БД")
             return transaction
 
+        except IntegrityError as e:
+            # Обрабатываем случай, когда транзакция уже существует (race condition)
+            self.db.rollback()
+            logger.warning(
+                f"Транзакция {tx_data['txid']} уже существует в БД (race condition)"
+            )
+            # Пытаемся получить существующую транзакцию
+            existing_tx = self.get_transaction_by_txid(tx_data["txid"])
+            if existing_tx:
+                return existing_tx
+            # Если не нашли, пробрасываем ошибку
+            logger.error(f"Ошибка целостности БД для транзакции {tx_data['txid']}: {e}")
+            raise TransactionServiceError(f"Ошибка целостности БД: {e}")
         except Exception as e:
             self.db.rollback()
             logger.error(f"Ошибка сохранения транзакции в БД: {e}")
