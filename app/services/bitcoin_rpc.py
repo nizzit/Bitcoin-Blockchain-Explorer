@@ -31,7 +31,8 @@ class BitcoinRPCClient:
         """Создание подключения к Bitcoin Core"""
         try:
             rpc_url = (
-                f"http://{settings.BITCOIN_RPC_USER}:{settings.BITCOIN_RPC_PASSWORD}"
+                f"{settings.BITCOIN_RPC_PROTOCOL}://"
+                f"{settings.BITCOIN_RPC_USER}:{settings.BITCOIN_RPC_PASSWORD}"
                 f"@{settings.BITCOIN_RPC_HOST}:{settings.BITCOIN_RPC_PORT}/"
             )
             self._connection = AuthServiceProxy(
