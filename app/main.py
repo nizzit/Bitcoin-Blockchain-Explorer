@@ -7,7 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app.api import addresses, blocks, search, transactions
+from app.api import addresses, blocks, cache, search, sync, transactions
+from app.background import lifespan
 from app.config import settings
 
 # Создаем FastAPI приложение
@@ -18,6 +19,7 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
     debug=True,
+    lifespan=lifespan,
 )
 
 # Настройка CORS
@@ -40,6 +42,8 @@ app.include_router(blocks.router, prefix=settings.API_V1_STR)
 app.include_router(transactions.router, prefix=settings.API_V1_STR)
 app.include_router(addresses.router, prefix=settings.API_V1_STR)
 app.include_router(search.router, prefix=settings.API_V1_STR)
+app.include_router(sync.router, prefix=settings.API_V1_STR)
+app.include_router(cache.router, prefix=settings.API_V1_STR)
 
 
 @app.get("/")
