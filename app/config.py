@@ -18,7 +18,7 @@ class Settings(BaseSettings):
 
     # Bitcoin RPC настройки
     BITCOIN_RPC_HOST: str = "127.0.0.1"
-    BITCOIN_RPC_PORT: int = 8332
+    BITCOIN_RPC_PORT: int = 18445
     BITCOIN_RPC_USER: str = "bitcoinrpc"
     BITCOIN_RPC_PASSWORD: str = "your_secure_password"
     BITCOIN_RPC_TIMEOUT: int = 30

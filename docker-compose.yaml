@@ -1,0 +1,25 @@
+services:
+  bitcoin-regtest:
+    image: bitcoin/bitcoin:latest
+    container_name: bitcoin-regtest
+    ports:
+      - "18443:18443" # P2P порт
+      - "18445:18445" # RPC порт
+    volumes:
+      - bitcoin-data:/home/bitcoin/.bitcoin
+      - ./bitcoin.conf:/home/bitcoin/.bitcoin/bitcoin.conf
+    command: -conf=/home/bitcoin/.bitcoin/bitcoin.conf
+
+  bitcoin-miner:
+    image: bitcoin/bitcoin:latest
+    container_name: bitcoin-miner
+    depends_on:
+      - bitcoin-regtest
+    volumes:
+      - ./miner-script.sh:/miner-script.sh
+      - ./bitcoin.conf:/home/bitcoin/.bitcoin/bitcoin.conf
+    command: /bin/bash /miner-script.sh
+    restart: unless-stopped
+
+volumes:
+  bitcoin-data:
