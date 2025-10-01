@@ -144,6 +144,11 @@ body {
     z-index: 1000;
 }
 
+.search-results:empty {
+    display: none;
+}
+
+
 /* Основной контент */
 .main {
     flex: 1;
@@ -205,6 +210,13 @@ body {
 }
 
 /* Секции */
+.two-column-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+}
+
 .section {
     margin-bottom: var(--spacing-xl);
 }
@@ -694,6 +706,10 @@ body {
 
     .hero h2 {
         font-size: 1.8rem;
+    }
+
+    .two-column-grid {
+        grid-template-columns: 1fr;
     }
 
     .tx-flow {

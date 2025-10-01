@@ -3,32 +3,34 @@
 {% block title %}Главная - Bitcoin Explorer{% endblock %}
 
 {% block content %}
-<section class="section">
-    <div class="section-header">
-        <h3>Последние блоки</h3>
-        <a href="/blocks" class="view-all-link">Все блоки →</a>
-    </div>
-
-    <div id="latest-blocks" hx-get="/components/latest-blocks" hx-trigger="load, every 30s" hx-swap="innerHTML">
-        <div class="loading">
-            <div class="spinner"></div>
-            <p>Загрузка блоков...</p>
+<div class="two-column-grid">
+    <section class="section">
+        <div class="section-header">
+            <h3>Последние блоки</h3>
+            <a href="/blocks" class="view-all-link">Все блоки →</a>
         </div>
-    </div>
-</section>
 
-<section class="section">
-    <div class="section-header">
-        <h3>Последние транзакции</h3>
-        <a href="/transactions" class="view-all-link">Все транзакции →</a>
-    </div>
-
-    <div id="latest-transactions" hx-get="/components/latest-transactions" hx-trigger="load, every 30s"
-        hx-swap="innerHTML">
-        <div class="loading">
-            <div class="spinner"></div>
-            <p>Загрузка транзакций...</p>
+        <div id="latest-blocks" hx-get="/components/latest-blocks" hx-trigger="load, every 30s" hx-swap="innerHTML">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Загрузка блоков...</p>
+            </div>
         </div>
-    </div>
-</section>
+    </section>
+
+    <section class="section">
+        <div class="section-header">
+            <h3>Последние транзакции</h3>
+            <a href="/transactions" class="view-all-link">Все транзакции →</a>
+        </div>
+
+        <div id="latest-transactions" hx-get="/components/latest-transactions" hx-trigger="load, every 30s"
+            hx-swap="innerHTML">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Загрузка транзакций...</p>
+            </div>
+        </div>
+    </section>
+</div>
 {% endblock %}
