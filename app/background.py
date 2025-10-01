@@ -48,7 +48,7 @@ async def periodic_sync_task(interval: int = 60) -> None:
                 # Синхронизируем последние блоки если не идет другая синхронизация
                 if not sync_service.is_syncing:
                     try:
-                        result = await sync_service.sync_latest_blocks(max_blocks=10)
+                        result = await sync_service.sync_latest_blocks(max_blocks=100)
                         if result["synced_blocks"] > 0:
                             logger.info(
                                 f"Автосинхронизация: блоков={result['synced_blocks']}, "
@@ -167,9 +167,9 @@ async def start_background_tasks() -> None:
 
     # Создаем задачи
     tasks = [
-        asyncio.create_task(periodic_sync_task(interval=60)),  # Каждую минуту
-        asyncio.create_task(periodic_mempool_sync_task(interval=30)),  # Каждые 30 сек
-        asyncio.create_task(periodic_validation_task(interval=3600)),  # Каждый час
+        asyncio.create_task(periodic_sync_task(interval=10)),
+        asyncio.create_task(periodic_mempool_sync_task(interval=10)),
+        asyncio.create_task(periodic_validation_task(interval=3600)),
     ]
 
     _sync_task = asyncio.gather(*tasks, return_exceptions=True)
