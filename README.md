@@ -188,29 +188,6 @@ curl -X POST http://localhost:8000/api/sync/start?max_blocks=100
 curl http://localhost:8000/api/sync/status
 ```
 
-## 🐳 Docker (опционально)
-
-### Сборка образа
-```bash
-docker build -t bitcoin-explorer .
-```
-
-### Запуск контейнера
-```bash
-docker run -d \
-  -p 8000:8000 \
-  -e BITCOIN_RPC_HOST=host.docker.internal \
-  -e BITCOIN_RPC_USER=bitcoinrpc \
-  -e BITCOIN_RPC_PASSWORD=your_secure_password \
-  -v $(pwd)/blockchain.db:/app/blockchain.db \
-  bitcoin-explorer
-```
-
-### Docker Compose
-```bash
-docker-compose up -d
-```
-
 ## 📝 Структура проекта
 
 ```
