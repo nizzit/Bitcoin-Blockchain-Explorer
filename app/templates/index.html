@@ -3,17 +3,6 @@
 {% block title %}Главная - Bitcoin Explorer{% endblock %}
 
 {% block content %}
-<div class="hero">
-    <h2>Bitcoin Blockchain Explorer</h2>
-    <p class="hero-subtitle">Исследуйте блокчейн Bitcoin в реальном времени</p>
-</div>
-
-<div class="stats-grid">
-    <div class="stat-card" hx-get="/stats" hx-trigger="load, every 30s" hx-target="this" hx-swap="innerHTML">
-        <div class="stat-loading">Загрузка статистики...</div>
-    </div>
-</div>
-
 <section class="section">
     <div class="section-header">
         <h3>Последние блоки</h3>

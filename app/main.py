@@ -243,28 +243,6 @@ async def address_transactions_component(request: Request, address: str):
     )
 
 
-@app.get("/stats", response_class=HTMLResponse)
-async def stats_endpoint(request: Request):
-    """Endpoint для статистики (используется на главной странице)"""
-    db = next(get_db())
-    block_service = BlockService(db)
-
-    # Получаем последний блок для статистики
-    latest_block = await block_service.get_latest_block()
-
-    if latest_block:
-        return templates.TemplateResponse(
-            "stats.html", {"request": request, "latest_block": latest_block}
-        )
-    else:
-        stats_html = """
-        <div class="stat-card">
-            <p>Статистика недоступна</p>
-        </div>
-        """
-        return HTMLResponse(content=stats_html)
-
-
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
