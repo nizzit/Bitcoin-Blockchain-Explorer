@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}Все транзакции - Bitcoin Explorer{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="section-header">
+        <h3>Все транзакции</h3>
+    </div>
+
+    <div id="all-transactions" hx-get="/components/latest-transactions?page=1" hx-trigger="load" hx-swap="innerHTML">
+        <div class="loading">
+            <div class="spinner"></div>
+            <p>Загрузка транзакций...</p>
+        </div>
+    </div>
+</section>
+{% endblock %}

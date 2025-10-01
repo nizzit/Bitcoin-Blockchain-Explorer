@@ -101,13 +101,13 @@ async def address_page(request: Request, address: str):
 @app.get("/blocks", response_class=HTMLResponse)
 async def blocks_page(request: Request):
     """Страница списка блоков"""
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse("blocks.html", {"request": request})
 
 
 @app.get("/transactions", response_class=HTMLResponse)
 async def transactions_page(request: Request):
     """Страница списка транзакций"""
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse("transactions.html", {"request": request})
 
 
 @app.get("/search", response_class=HTMLResponse)
