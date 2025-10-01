@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.block import Block
 from app.models.transaction import Transaction
+from app.services.address_service import AddressService
 from app.services.bitcoin_rpc import BitcoinRPCError, bitcoin_rpc
 from app.services.block_service import BlockService
 from app.services.transaction_service import TransactionService
@@ -31,10 +32,12 @@ class SyncService:
         self.db = db
         self.block_service = BlockService(db)
         self.transaction_service = TransactionService(db)
+        self.address_service = AddressService(db)
         self._is_syncing = False
         self._sync_stats = {
             "blocks_synced": 0,
             "transactions_synced": 0,
+            "addresses_synced": 0,
             "errors": 0,
             "last_sync_time": None,
             "sync_progress": 0.0,
@@ -154,6 +157,11 @@ class SyncService:
                                         full_tx_data
                                     )
                                     synced_transactions += 1
+
+                                    # Синхронизируем адреса из выходов транзакции
+                                    self._sync_addresses_from_transaction(
+                                        full_tx_data, block_data["height"]
+                                    )
                                 except Exception as tx_error:
                                     logger.warning(
                                         f"Ошибка синхронизации транзакции {tx_data}: "
@@ -172,6 +180,11 @@ class SyncService:
                                         tx_data
                                     )
                                     synced_transactions += 1
+
+                                    # Синхронизируем адреса из выходов транзакции
+                                    self._sync_addresses_from_transaction(
+                                        tx_data, block_data["height"]
+                                    )
                                 except Exception as tx_error:
                                     logger.warning(
                                         f"Ошибка синхронизации транзакции: {tx_error}"
@@ -249,9 +262,10 @@ class SyncService:
                         "already exists" not in error_msg.lower()
                         and "race condition" not in error_msg.lower()
                     ):
+                        txid = tx_data.get("txid")
                         logger.warning(
                             f"Ошибка синхронизации транзакции из мемпула "
-                            f"{tx_data.get('txid')}: {tx_error}"
+                            f"{txid}: {tx_error}"
                         )
                     errors += 1
 
@@ -553,6 +567,66 @@ class SyncService:
         except Exception as e:
             logger.error(f"Ошибка валидации БД: {e}")
             raise SyncServiceError(f"Ошибка валидации БД: {e}")
+
+    def _sync_addresses_from_transaction(
+        self, tx_data: Dict[str, Any], block_height: int
+    ) -> None:
+        """
+        Синхронизация адресов из транзакции
+
+        Args:
+            tx_data: Данные транзакции
+            block_height: Высота блока
+        """
+        try:
+            # Извлекаем адреса из выходов транзакции
+            if "vout" in tx_data:
+                for vout in tx_data["vout"]:
+                    script_pubkey = vout.get("scriptPubKey", {})
+                    addresses = script_pubkey.get("addresses", [])
+
+                    # Если нет поля addresses, пытаемся получить из address
+                    if not addresses:
+                        address = script_pubkey.get("address")
+                        if address:
+                            addresses = [address]
+
+                    # Синхронизируем каждый адрес
+                    for address in addresses:
+                        try:
+                            self.address_service.sync_address_from_outputs(
+                                address, block_height
+                            )
+                            self._sync_stats["addresses_synced"] += 1
+                        except Exception as addr_error:
+                            logger.debug(
+                                f"Ошибка синхронизации адреса {address}: {addr_error}"
+                            )
+        except Exception as e:
+            logger.debug(f"Ошибка синхронизации адресов из транзакции: {e}")
+
+    async def sync_all_addresses(self) -> Dict[str, Any]:
+        """
+        Полная синхронизация всех адресов из существующих транзакций
+
+        Returns:
+            Результат синхронизации адресов
+        """
+        try:
+            logger.info("Начинаем полную синхронизацию адресов")
+            result = self.address_service.sync_all_addresses()
+
+            # Обновляем статистику
+            self._sync_stats["addresses_synced"] += result.get("synced_new", 0)
+
+            logger.info(
+                f"Синхронизация адресов завершена: {result.get('message', 'Готово')}"
+            )
+
+            return result
+        except Exception as e:
+            logger.error(f"Ошибка синхронизации адресов: {e}")
+            raise SyncServiceError(f"Не удалось синхронизировать адреса: {e}")
 
 
 def get_sync_service(db: Session = None) -> SyncService:
